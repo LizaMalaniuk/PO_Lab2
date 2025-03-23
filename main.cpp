@@ -7,12 +7,12 @@
 #include <climits>
 
 
-const int dataSize = 1000000; // Розмір масиву
+const int dataSize = 3400000; // Розмір масиву
 const int numThreads = 4;     // Кількість потоків
 
 void generateData(std::vector<int>& data) {
     std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(-100, 200);
+    std::uniform_int_distribution<int> dist(-100, 2000);
     for (int& num : data) {
         num = dist(rng);
     }
@@ -96,23 +96,58 @@ void parallelWithMutex(const std::vector<int>& data) {
 
     std::cout << "Parallel version with mutex" << "\n";
 
-    std::cout << "Number of elements > 10: " << count << std::endl;
-    if (count > 0)
-        std::cout << "Largest element > 10: " << maxVal << std::endl;
-    else
-        std::cout << "No items > 10 found." << std::endl;
-
     std::cout << "Execution time: " << elapsed.count() << " second" << std::endl;
 }
 
+// --- Версія з атомарними змінними (CAS) ---
+void parallelWithAtomic(const std::vector<int>& data) {
+    std::atomic<int> count(0);
+    std::atomic<int> maxVal(INT_MIN);
+
+    auto worker = [&](int start, int end) {
+        for (int i = start; i < end; ++i) {
+            int val = data[i];
+            if (val > 10) {
+                count.fetch_add(1, std::memory_order_relaxed);
+
+                int currentMax = maxVal.load(std::memory_order_relaxed);
+                while (val > currentMax && !maxVal.compare_exchange_weak(currentMax, val,
+                        std::memory_order_relaxed)) {
+                    // nothing — currentMax gets updated automatically
+                        }
+            }
+        }
+    };
+
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    std::vector<std::thread> threads;
+    int chunkSize = data.size() / numThreads;
+
+    for (int i = 0; i < numThreads; ++i) {
+        int startIdx = i * chunkSize;
+        int endIdx = (i == numThreads - 1) ? data.size() : (i + 1) * chunkSize;
+        threads.emplace_back(worker, startIdx, endIdx);
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = endTime - startTime;
+
+    std::cout << "Version with atomic variables" << "\n";
+
+    std::cout << "Execution time: " << elapsed.count() << " second" << std::endl;
+}
 int main() {
     std::vector<int> data(dataSize);
     generateData(data);
 
-    std::cout << "Виконання для масиву з " << dataSize << " елементів\n\n";
-
     serialVersion(data);
     parallelWithMutex(data);
+    parallelWithAtomic(data);
 
     return 0;
 }
