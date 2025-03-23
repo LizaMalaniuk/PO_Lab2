@@ -1,20 +1,45 @@
 #include <iostream>
+#include <vector>
+#include <chrono>
+#include <random>
 
-// TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 int main() {
-    // TIP Press <shortcut actionId="RenameElement"/> when your caret is at the
-    // <b>lang</b> variable name to see how CLion can help you rename it.
-    auto lang = "C++";
-    std::cout << "Hello and welcome to " << lang << "!\n";
+    const int dataSize = 1000000; // розмір масиву
+    std::vector<int> data(dataSize);
 
-    for (int i = 1; i <= 5; i++) {
-        // TIP Press <shortcut actionId="Debug"/> to start debugging your code.
-        // We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/>
-        // breakpoint for you, but you can always add more by pressing
-        // <shortcut actionId="ToggleLineBreakpoint"/>.
-        std::cout << "i = " << i << std::endl;
+    // Ініціалізація генератора випадкових чисел
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> dist(-100, 200);
+
+    // Заповнення масиву випадковими числами
+    for (int& num : data) {
+        num = dist(rng);
     }
+
+    int count = 0;
+    int maxVal = INT_MIN;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    for (int num : data) {
+        if (num > 10) {
+            count++;
+            if (num > maxVal) {
+                maxVal = num;
+            }
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+
+    std::cout << "Number of elements > 10: " << count << std::endl;
+    if (count > 0)
+        std::cout << "Largest element > 10: " << maxVal << std::endl;
+    else
+        std::cout << "No items > 10 found." << std::endl;
+
+    std::cout << "Execution time: " << elapsed.count() << " second" << std::endl;
 
     return 0;
 }
